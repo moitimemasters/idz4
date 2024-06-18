@@ -227,8 +227,8 @@ class FlowerBedClient {
                 std::unique_lock<std::mutex> lock(mtx);
                 std::this_thread::sleep_for(
                     std::chrono::seconds(newFlowersInterval));
-                cv.wait_for(lock, std::chrono::seconds(newFlowersInterval),
-                            [this] { return stop_flag.load(); });
+                // cv.wait_for(lock, std::chrono::seconds(newFlowersInterval),
+                //             [this] { return stop_flag.load(); });
             }
         } catch (const std::exception& e) {
             std::cerr

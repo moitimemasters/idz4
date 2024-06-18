@@ -173,11 +173,18 @@ class Server : public UDPServer {
 
     void handleMonitorRequest(const std::string &client_id,
                               struct sockaddr_in &addr) {
+        stateManager.updateNonitorConnection(client_id);
         sendMessage(client_id, addr, stateManager.getMonitorData());
     }
 };
 
-int main() {
-    Server server(12345);
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        std::cerr << "Usage: " << argv[0] << "<server_port>" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    uint16_t server_port = std::stoi(argv[1]);
+    Server server(server_port);
     server.start();
 }

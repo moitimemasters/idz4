@@ -16,15 +16,15 @@ class FlowerBedStateManager {
     FlowerBedStateManager()
         : gardener_count(0),
           flowerbed_connected(false),
-          last_flowerbed_ping(std::chrono::steady_clock::now()) {}
+          last_flowerbed_ping(std::chrono::system_clock::now()) {}
 
     bool setFlowerbedConnected(bool connected) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (flowerbed_connected) {
-            last_flowerbed_ping = std::chrono::steady_clock::now();
+            last_flowerbed_ping = std::chrono::system_clock::now();
             return false;
         }
-        last_flowerbed_ping = std::chrono::steady_clock::now();
+        last_flowerbed_ping = std::chrono::system_clock::now();
         flowerbed_connected = connected;
         return true;
     }
@@ -32,14 +32,14 @@ class FlowerBedStateManager {
     bool addGardener(const std::string& client_id) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (gardener_ids.find(client_id) != gardener_ids.end()) {
-            gardener_timestamps[client_id] = std::chrono::steady_clock::now();
+            gardener_timestamps[client_id] = std::chrono::system_clock::now();
             return true;
         }
         if (gardener_ids.size() >= 2) {
             return false;
         }
         gardener_ids.insert(client_id);
-        gardener_timestamps[client_id] = std::chrono::steady_clock::now();
+        gardener_timestamps[client_id] = std::chrono::system_clock::now();
         gardener_count = gardener_ids.size();
         return true;
     }
@@ -56,12 +56,12 @@ class FlowerBedStateManager {
 
     void updateGardenerTimestamp(const std::string& client_id) {
         std::lock_guard<std::mutex> lock(mutex_);
-        gardener_timestamps[client_id] = std::chrono::steady_clock::now();
+        gardener_timestamps[client_id] = std::chrono::system_clock::now();
     }
 
     void updateFlowerbedTimestamp() {
         std::lock_guard<std::mutex> lock(mutex_);
-        last_flowerbed_ping = std::chrono::steady_clock::now();
+        last_flowerbed_ping = std::chrono::system_clock::now();
     }
 
     bool isReady() {
@@ -91,7 +91,7 @@ class FlowerBedStateManager {
 
     void checkConnections() {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto now = std::chrono::steady_clock::now();
+        auto now = std::chrono::system_clock::now();
         auto timeout = std::chrono::seconds(10);
 
         std::erase_if(gardener_ids, [&](const std::string& id) {
@@ -125,6 +125,15 @@ class FlowerBedStateManager {
                               newFlowersToWater.end());
     }
 
+    void updateNonitorConnection(std::string monitorClientId) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        connected_monitors[monitorClientId] = std::chrono::system_clock::now();
+        auto deadline =
+            std::chrono::system_clock::now() - std::chrono::seconds(10);
+        std::erase_if(connected_monitors,
+                      [&](const auto& kv) { return kv.second < deadline; });
+    }
+
     std::string getMonitorData() {
         std::lock_guard<std::mutex> lock(mutex_);
         std::string info = "";
@@ -138,9 +147,30 @@ class FlowerBedStateManager {
         }
         info += "\n";
 
-        info += "Updates from gardeners (watered flowers):\n\t";
-        for (auto update : updates) {
-            info += std::to_string(update.first) + " ";
+        info += "Updates from gardeners (watered flowers):";
+        if (updates.empty()) {
+            info += "None";
+        } else {
+            info += "\n\t";
+            for (auto update : updates) {
+                info += std::to_string(update.first) + " ";
+            }
+        }
+
+        info += "\n";
+
+        info += "Connected monitors: ";
+        if (connected_monitors.empty()) {
+            info += "None\n";
+        } else {
+            info += "\n\t";
+            for (const auto& [clientId, timestamp] : connected_monitors) {
+                auto timet = std::chrono::system_clock::to_time_t(timestamp);
+                auto tm = std::localtime(&timet);
+                char buffer[32] = {0};
+                std::strftime(buffer, 32, "%Y-%m-%d %H:%M:%S", tm);
+                info += clientId + "\t last update: " + buffer + "\n\t";
+            }
         }
 
         return info;
@@ -150,11 +180,13 @@ class FlowerBedStateManager {
     int gardener_count;
     bool flowerbed_connected;
     std::unordered_set<std::string> gardener_ids;
-    std::unordered_map<std::string, std::chrono::steady_clock::time_point>
+    std::unordered_map<std::string, std::chrono::system_clock::time_point>
         gardener_timestamps;
-    std::chrono::steady_clock::time_point last_flowerbed_ping;
+    std::chrono::system_clock::time_point last_flowerbed_ping;
     std::mutex mutex_;
     std::vector<std::pair<size_t, int>> updates;
+    std::unordered_map<std::string, std::chrono::system_clock::time_point>
+        connected_monitors;
     std::unordered_set<size_t> flowersToWater;
 };
 
