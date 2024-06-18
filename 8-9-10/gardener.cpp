@@ -10,9 +10,9 @@
 
 #include "udp_client.hpp"
 
-class MonitorClient {
+class GardenerClient {
    public:
-    MonitorClient(const std::string &server_ip, uint16_t server_port)
+    GardenerClient(const std::string &server_ip, uint16_t server_port)
         : client(server_ip, server_port), stop_flag(false) {
         std::srand(std::time(nullptr));
     }
@@ -23,12 +23,10 @@ class MonitorClient {
     static constexpr size_t retry_attempts = 3;
 
     void start() {
-        jthreads.emplace_back(&MonitorClient::pingServer, this,
+        jthreads.emplace_back(&GardenerClient::pingServer, this,
                               std::stop_token());
-        jthreads.emplace_back(&MonitorClient::waterFlowers, this,
+        jthreads.emplace_back(&GardenerClient::waterFlowers, this,
                               std::stop_token());
-
-        stop();
     }
 
    private:
@@ -41,7 +39,7 @@ class MonitorClient {
 
     void pingServer(std::stop_token stop_token) {
         try {
-            while (!stop_token.stop_requested()) {
+            while (!stop_token.stop_requested() && !stop_flag.load()) {
                 std::optional<std::string> response;
                 {
                     std::lock_guard<std::mutex> lock(socket_mtx);
@@ -86,7 +84,7 @@ class MonitorClient {
                                                         max_watering_interval);
 
         try {
-            while (!stop_token.stop_requested()) {
+            while (!stop_token.stop_requested() && !stop_flag.load()) {
                 int sleep_duration = interval_dis(gen);
                 std::this_thread::sleep_for(
                     std::chrono::seconds(sleep_duration));
@@ -200,7 +198,7 @@ class MonitorClient {
 };
 
 void clientTask(const std::string &server_ip, uint16_t server_port) {
-    MonitorClient client(server_ip, server_port);
+    GardenerClient client(server_ip, server_port);
     client.start();
 }
 

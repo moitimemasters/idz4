@@ -4,6 +4,7 @@
 #include <ctime>
 #include <iostream>
 #include <mutex>
+#include <ostream>
 #include <random>
 #include <sstream>
 #include <thread>
@@ -134,7 +135,7 @@ class FlowerBedClient {
 
     void pingServer(std::stop_token stop_token) {
         try {
-            while (!stop_token.stop_requested()) {
+            while (!stop_token.stop_requested() && !stop_flag.load()) {
                 std::optional<std::string> response;
                 {
                     std::lock_guard<std::mutex> lock(socket_mtx);
@@ -177,7 +178,9 @@ class FlowerBedClient {
         std::uniform_int_distribution<int> dis(4, 10);
 
         try {
-            while (!stop_token.stop_requested()) {
+            size_t attempts = 0;
+            while (!stop_token.stop_requested() && !stop_flag.load() &&
+                   attempts < retryAttempts) {
                 std::vector<int> new_flowers;
                 {
                     std::lock_guard<std::mutex> lock(mtx);
@@ -205,6 +208,15 @@ class FlowerBedClient {
                 }
 
                 if (response.has_value()) {
+                    if (response.value() == "NOT_READY") {
+                        std::cout
+                            << "[WARNING] Server is not ready, retrying..." << std::endl;
+                        std::unique_lock<std::mutex> lock(mtx);
+                        std::this_thread::sleep_for(
+                            std::chrono::seconds(newFlowersInterval));
+                        ++attempts;
+                        continue;
+                    }
                     if (response.value() != "OK") {
                         std::cerr << "[ERROR] Unexpected response to pushing "
                                      "unwatered flowers: "
@@ -213,6 +225,7 @@ class FlowerBedClient {
                         cv.notify_all();
                         break;
                     }
+                    attempts = 0;
                     std::cout << "[INFO] Server acknowledged new flowers."
                               << std::endl;
                 } else {
@@ -227,8 +240,6 @@ class FlowerBedClient {
                 std::unique_lock<std::mutex> lock(mtx);
                 std::this_thread::sleep_for(
                     std::chrono::seconds(newFlowersInterval));
-                cv.wait_for(lock, std::chrono::seconds(newFlowersInterval),
-                            [this] { return stop_flag.load(); });
             }
         } catch (const std::exception& e) {
             std::cerr

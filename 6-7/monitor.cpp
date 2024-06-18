@@ -4,9 +4,9 @@
 
 #include "udp_client.hpp"
 
-class MonitorClient {
+class GardenerClient {
    public:
-    MonitorClient(const std::string &server_ip, uint16_t server_port)
+    GardenerClient(const std::string &server_ip, uint16_t server_port)
         : client(server_ip, server_port) {}
 
     void start() {
@@ -34,7 +34,7 @@ class MonitorClient {
 };
 
 void clientTask(const std::string &server_ip, uint16_t server_port) {
-    MonitorClient client(server_ip, server_port);
+    GardenerClient client(server_ip, server_port);
     client.start();
 }
 

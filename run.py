@@ -3,7 +3,7 @@ import subprocess
 import time
 
 
-run_cases = frozenset({"4-5", "6-7", "8", "9-10"})
+run_cases = frozenset({"4-5", "6-7", "8-9-10"})
 
 
 def build_with_cmake():
@@ -49,32 +49,30 @@ def main():
 
     processes = []
 
-    match args.run_case:
-        case "4-5":
-            print("Launching server")
-            processes.append(run_server("4-5", args.port))
-            time.sleep(1)
-            print("Launching gardeners")
-            processes.append(run_gardener("4-5", args.port, 1))
-            processes.append(run_gardener("4-5", args.port, 2))
-            time.sleep(1)
-            print("Flowerbed")
-            processes.append(run_flowerbed("4-5", args.port))
-
-        case "6-7" | "8" | "9-10":
-            print("Launching server")
-            processes.append(run_server(args.run_case, args.port))
-            time.sleep(1)
-            print("Launching monitor")
-            processes.append(run_monitor(args.run_case, args.port))
-            print("Launching gardeners")
-            processes.append(run_gardener(args.run_case, args.port, 1))
-            processes.append(run_gardener(args.run_case, args.port, 2))
-            time.sleep(1)
-            print("Flowerbed")
-            processes.append(run_flowerbed(args.run_case, args.port))
-        case _:
-            raise ValueError(f"Unknown run case {args.run_case}")
+    if args.run_case == "4-5":
+        print("Launching server")
+        processes.append(run_server("4-5", args.port))
+        time.sleep(1)
+        print("Launching gardeners")
+        processes.append(run_gardener("4-5", args.port, 1))
+        processes.append(run_gardener("4-5", args.port, 2))
+        time.sleep(1)
+        print("Flowerbed")
+        processes.append(run_flowerbed("4-5", args.port))
+    elif args.run_case in ("6-7", "8-9-10"):
+        print("Launching server")
+        processes.append(run_server(args.run_case, args.port))
+        time.sleep(1)
+        print("Launching monitor")
+        processes.append(run_monitor(args.run_case, args.port))
+        print("Launching gardeners")
+        processes.append(run_gardener(args.run_case, args.port, 1))
+        processes.append(run_gardener(args.run_case, args.port, 2))
+        time.sleep(1)
+        print("Flowerbed")
+        processes.append(run_flowerbed(args.run_case, args.port))
+    else:
+        raise ValueError(f"Unknown run case {args.run_case}")
 
     time.sleep(40)
     for p in processes:

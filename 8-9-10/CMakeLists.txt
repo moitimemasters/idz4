@@ -1,4 +1,4 @@
-project(8)
+project(8-9-10)
 
 add_executable(8-server server.cpp)
 target_link_libraries(8-server udpcommunication)

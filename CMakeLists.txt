@@ -23,4 +23,4 @@ set_target_properties(udpcommunication PROPERTIES LINKER_LANGUAGE CXX)
 
 add_subdirectory(4-5)
 add_subdirectory(6-7)
-add_subdirectory(8)
+add_subdirectory(8-9-10)
